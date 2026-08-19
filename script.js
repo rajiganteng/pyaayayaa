@@ -25,6 +25,20 @@ const TEXTS = [
 
 const bgSong = document.getElementById("bg-song");
 
+function tryPlaySong() {
+  const attempt = bgSong.play();
+  if (attempt !== undefined) {
+    attempt.catch(() => {
+      bgSong.muted = true;
+      bgSong.play().then(() => {
+        bgSong.muted = false;
+      }).catch(() => {});
+    });
+  }
+}
+
+tryPlaySong();
+
 window.addEventListener("load", () => {
   const bar = document.getElementById("loadingBar");
   requestAnimationFrame(() => {
@@ -34,51 +48,9 @@ window.addEventListener("load", () => {
   setTimeout(() => {
     document.getElementById("loading-screen").classList.add("hidden");
     startScene();
-    playSong();
+    tryPlaySong();
   }, 2600);
 });
-
-function playSong() {
-  const attempt = bgSong.play();
-  if (attempt !== undefined) {
-    attempt.catch(() => {
-      const resume = () => {
-        bgSong.play();
-        document.removeEventListener("click", resume);
-        document.removeEventListener("touchstart", resume);
-      };
-      document.addEventListener("click", resume);
-      document.addEventListener("touchstart", resume);
-    });
-  }
-}
-
-function buildFloatingText() {
-  const layer = document.getElementById("floating-text-layer");
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  const pool = [...TEXTS, ...TEXTS];
-
-  pool.forEach((word) => {
-    const el = document.createElement("div");
-    el.className = "float-text";
-    el.textContent = word;
-
-    const size = 14 + Math.random() * 16;
-    el.style.fontSize = size + "px";
-
-    const startX = Math.random() * (vw - 40);
-    const startY = Math.random() * (vh - 40);
-    el.style.left = startX + "px";
-    el.style.top = startY + "px";
-    el.style.opacity = (0.15 + Math.random() * 0.25).toFixed(2);
-
-    layer.appendChild(el);
-
-    animateFloat(el, 18 + Math.random() * 14);
-  });
-}
 
 function buildFloatingPhotos() {
   const layer = document.getElementById("floating-photo-layer");
@@ -89,16 +61,17 @@ function buildFloatingPhotos() {
     const el = document.createElement("div");
     el.className = "float-photo";
 
-    const size = 90 + Math.random() * 70;
+    const size = 70 + Math.random() * 55;
     el.style.width = size + "px";
     el.style.height = size + "px";
 
     const startX = Math.random() * (vw - size);
-    const startY = Math.random() * (vh - size);
     el.style.left = startX + "px";
-    el.style.top = startY + "px";
-    el.style.opacity = "0";
-    el.style.transform = "scale(0.8)";
+
+    const duration = 16 + Math.random() * 12;
+    const delay = -Math.random() * duration;
+
+    el.style.top = -size + "px";
 
     const img = document.createElement("img");
     img.src = src;
@@ -107,58 +80,68 @@ function buildFloatingPhotos() {
 
     layer.appendChild(el);
 
-    setTimeout(() => {
-      el.style.transition = "opacity 1.2s ease, transform 1.2s ease";
-      el.style.opacity = "1";
-      el.style.transform = "scale(1)";
-    }, 150 * i);
-
-    animateFloat(el, 22 + Math.random() * 16, true);
+    el.animate(
+      [
+        { transform: `translateY(0px)` },
+        { transform: `translateY(${vh + size * 2}px)` }
+      ],
+      {
+        duration: duration * 1000,
+        iterations: Infinity,
+        easing: "linear",
+        delay: delay * 1000
+      }
+    );
   });
 }
 
-function animateFloat(el, duration, isPhoto = false) {
-  const driftX = (Math.random() - 0.5) * (isPhoto ? 90 : 60);
-  const driftY = (Math.random() - 0.5) * (isPhoto ? 90 : 60);
-  const rotate = (Math.random() - 0.5) * (isPhoto ? 10 : 6);
+function buildFloatingText() {
+  const layer = document.getElementById("floating-text-layer");
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
 
-  const keyframes = [
-    { transform: `translate(0px, 0px) rotate(0deg) ${isPhoto ? 'scale(1)' : ''}` },
-    { transform: `translate(${driftX}px, ${driftY}px) rotate(${rotate}deg) ${isPhoto ? 'scale(1)' : ''}` },
-    { transform: `translate(${-driftX * 0.6}px, ${driftY * 0.4}px) rotate(${-rotate}deg) ${isPhoto ? 'scale(1)' : ''}` },
-    { transform: `translate(0px, 0px) rotate(0deg) ${isPhoto ? 'scale(1)' : ''}` }
-  ];
+  const pool = [...TEXTS, ...TEXTS, ...TEXTS];
 
-  el.animate(keyframes, {
-    duration: duration * 1000,
-    iterations: Infinity,
-    easing: "ease-in-out",
-    delay: Math.random() * -duration * 1000
-  });
+  pool.forEach((word) => {
+    const el = document.createElement("div");
+    el.className = "float-text";
+    el.textContent = word;
 
-  if (!isPhoto) {
+    const size = 11 + Math.random() * 7;
+    el.style.fontSize = size + "px";
+
+    const startX = Math.random() * (vw - 40);
+    el.style.left = startX + "px";
+    el.style.opacity = (0.35 + Math.random() * 0.35).toFixed(2);
+
+    const duration = 14 + Math.random() * 12;
+    const delay = -Math.random() * duration;
+
+    el.style.top = -30 + "px";
+
+    layer.appendChild(el);
+
     el.animate(
       [
-        { opacity: el.style.opacity },
-        { opacity: Math.min(1, parseFloat(el.style.opacity) + 0.25) },
-        { opacity: el.style.opacity }
+        { transform: `translateY(0px)` },
+        { transform: `translateY(${vh + 60}px)` }
       ],
       {
-        duration: (duration * 0.6) * 1000,
+        duration: duration * 1000,
         iterations: Infinity,
-        easing: "ease-in-out",
-        delay: Math.random() * -duration * 600
+        easing: "linear",
+        delay: delay * 1000
       }
     );
-  }
+  });
 }
 
 let sceneStarted = false;
 function startScene() {
   if (sceneStarted) return;
   sceneStarted = true;
-  buildFloatingText();
   buildFloatingPhotos();
+  buildFloatingText();
 }
 
 let resizeTimer;
@@ -166,9 +149,9 @@ window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     if (!sceneStarted) return;
-    document.getElementById("floating-text-layer").innerHTML = "";
     document.getElementById("floating-photo-layer").innerHTML = "";
-    buildFloatingText();
+    document.getElementById("floating-text-layer").innerHTML = "";
     buildFloatingPhotos();
+    buildFloatingText();
   }, 400);
 });
