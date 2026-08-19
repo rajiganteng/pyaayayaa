@@ -24,31 +24,42 @@ const TEXTS = [
 ];
 
 const bgSong = document.getElementById("bg-song");
-let unmuteAttempted = false;
+let songUnlocked = false;
 
-function tryPlaySong() {
-  const attempt = bgSong.play();
-  if (attempt !== undefined) {
-    attempt.catch(() => {});
-  }
-}
-
-function tryUnmute() {
-  if (unmuteAttempted) return;
-  unmuteAttempted = true;
+function attemptAutoplay() {
   bgSong.muted = false;
+  bgSong.volume = 1;
   const attempt = bgSong.play();
   if (attempt !== undefined) {
-    attempt.catch(() => {
-      unmuteAttempted = false;
+    attempt.then(() => {
+      songUnlocked = true;
+    }).catch(() => {
+      bgSong.muted = true;
+      bgSong.play().catch(() => {});
     });
   }
 }
 
-tryPlaySong();
+function unlockSong() {
+  if (songUnlocked) return;
+  bgSong.muted = false;
+  bgSong.volume = 1;
+  const attempt = bgSong.play();
+  if (attempt !== undefined) {
+    attempt.then(() => {
+      songUnlocked = true;
+    }).catch(() => {});
+  }
+}
 
-["click", "touchstart", "touchmove", "scroll", "keydown"].forEach((evt) => {
-  window.addEventListener(evt, tryUnmute, { passive: true, once: false });
+attemptAutoplay();
+
+["pointerdown", "touchstart", "touchmove", "touchend", "click", "scroll", "wheel", "keydown", "mousemove", "mousedown"].forEach((evt) => {
+  window.addEventListener(evt, unlockSong, { passive: true, capture: true });
+  document.addEventListener(evt, unlockSong, { passive: true, capture: true });
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") unlockSong();
 });
 
 window.addEventListener("load", () => {
@@ -60,57 +71,71 @@ window.addEventListener("load", () => {
   setTimeout(() => {
     document.getElementById("loading-screen").classList.add("hidden");
     startScene();
-    tryPlaySong();
-    tryUnmute();
+    attemptAutoplay();
+    unlockSong();
   }, 2600);
 });
+
+const measureCanvas = document.createElement("canvas");
+const measureCtx = measureCanvas.getContext("2d");
+function measureTextWidth(text, fontSize) {
+  measureCtx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`;
+  return measureCtx.measureText(text).width;
+}
 
 function buildFloatingPhotos() {
   const layer = document.getElementById("floating-photo-layer");
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  const laneCount = PHOTOS.length;
-  const laneWidth = vw / laneCount;
+  const columnCount = Math.max(3, Math.min(5, Math.floor(vw / 150)));
+  const columnWidth = vw / columnCount;
+  const columns = Array.from({ length: columnCount }, () => []);
 
   PHOTOS.forEach((src, i) => {
-    const el = document.createElement("div");
-    el.className = "float-photo";
+    columns[i % columnCount].push(src);
+  });
 
-    const maxSize = Math.min(laneWidth - 14, 110);
-    const size = Math.max(50, maxSize - Math.random() * 20);
-    el.style.width = size + "px";
-    el.style.height = size + "px";
+  const duration = 24;
 
-    const laneStart = i * laneWidth;
-    const jitter = Math.max(0, laneWidth - size - 6);
-    const startX = laneStart + Math.random() * jitter + 3;
-    el.style.left = startX + "px";
+  columns.forEach((colPhotos, colIndex) => {
+    const laneStart = colIndex * columnWidth;
+    const size = Math.max(70, Math.min(columnWidth - 24, 150));
+    const travelDistance = vh + size * 2;
+    const slotGap = duration / colPhotos.length;
 
-    const duration = 20 + Math.random() * 10;
-    const delay = -Math.random() * duration;
+    colPhotos.forEach((src, slotIndex) => {
+      const el = document.createElement("div");
+      el.className = "float-photo";
+      el.style.width = size + "px";
+      el.style.height = size + "px";
 
-    el.style.top = -size + "px";
+      const jitter = Math.max(0, columnWidth - size - 12);
+      const startX = laneStart + 6 + Math.random() * jitter;
+      el.style.left = startX + "px";
+      el.style.top = -size + "px";
 
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = "memory";
-    el.appendChild(img);
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "memory";
+      el.appendChild(img);
+      layer.appendChild(el);
 
-    layer.appendChild(el);
+      const delay = -(slotIndex * slotGap) * 1000;
 
-    el.animate(
-      [
-        { transform: `translateY(0px)` },
-        { transform: `translateY(${vh + size * 2}px)` }
-      ],
-      {
-        duration: duration * 1000,
-        iterations: Infinity,
-        easing: "linear",
-        delay: delay * 1000
-      }
-    );
+      el.animate(
+        [
+          { transform: `translateY(0px)` },
+          { transform: `translateY(${travelDistance}px)` }
+        ],
+        {
+          duration: duration * 1000,
+          iterations: Infinity,
+          easing: "linear",
+          delay: delay
+        }
+      );
+    });
   });
 }
 
@@ -119,39 +144,54 @@ function buildFloatingText() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  const pool = [...TEXTS, ...TEXTS, ...TEXTS];
+  const columnCount = Math.max(3, Math.min(6, Math.floor(vw / 110)));
+  const columnWidth = vw / columnCount;
 
-  pool.forEach((word) => {
-    const el = document.createElement("div");
-    el.className = "float-text";
-    el.textContent = word;
+  const pool = [...TEXTS, ...TEXTS];
+  const columns = Array.from({ length: columnCount }, () => []);
+  pool.forEach((word, i) => {
+    columns[i % columnCount].push(word);
+  });
 
-    const size = 11 + Math.random() * 7;
-    el.style.fontSize = size + "px";
+  const duration = 20;
 
-    const startX = Math.random() * (vw - 40);
-    el.style.left = startX + "px";
-    el.style.opacity = (0.35 + Math.random() * 0.35).toFixed(2);
+  columns.forEach((colWords, colIndex) => {
+    const laneStart = colIndex * columnWidth;
+    const slotGap = duration / colWords.length;
 
-    const duration = 14 + Math.random() * 12;
-    const delay = -Math.random() * duration;
+    colWords.forEach((word, slotIndex) => {
+      const fontSize = 11 + Math.random() * 5;
+      const textWidth = measureTextWidth(word, fontSize);
 
-    el.style.top = -30 + "px";
+      const el = document.createElement("div");
+      el.className = "float-text";
+      el.textContent = word;
+      el.style.fontSize = fontSize + "px";
+      el.style.opacity = (0.4 + Math.random() * 0.3).toFixed(2);
 
-    layer.appendChild(el);
+      const maxX = Math.max(laneStart + 4, laneStart + columnWidth - textWidth - 4);
+      const minX = laneStart + 4;
+      const startX = Math.min(maxX, minX + Math.random() * Math.max(0, maxX - minX));
+      el.style.left = Math.max(4, Math.min(startX, vw - textWidth - 4)) + "px";
+      el.style.top = -30 + "px";
 
-    el.animate(
-      [
-        { transform: `translateY(0px)` },
-        { transform: `translateY(${vh + 60}px)` }
-      ],
-      {
-        duration: duration * 1000,
-        iterations: Infinity,
-        easing: "linear",
-        delay: delay * 1000
-      }
-    );
+      layer.appendChild(el);
+
+      const delay = -(slotIndex * slotGap) * 1000;
+
+      el.animate(
+        [
+          { transform: `translateY(0px)` },
+          { transform: `translateY(${vh + 60}px)` }
+        ],
+        {
+          duration: duration * 1000,
+          iterations: Infinity,
+          easing: "linear",
+          delay: delay
+        }
+      );
+    });
   });
 }
 

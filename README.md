@@ -17,10 +17,10 @@ assets/song/song.mp3                       <-- GANTI dengan lagumu (58 detik, ak
 3. Push ke GitHub repo baru.
 4. Import repo itu ke Vercel (Framework Preset: **Other** / static) → Deploy.
 
-Catatan penting soal sound: iOS Safari & kebanyakan browser HP punya kebijakan sistem yang MELARANG audio berbunyi otomatis sebelum ada interaksi apapun dari user (ini bukan bug kode, tapi aturan dari Apple/Google demi baterai & UX — tidak bisa di-bypass lewat kode apapun). Yang website ini lakukan:
-- Lagu langsung mulai diputar dalam kondisi muted begitu halaman terbuka (supaya "jalan" dari awal, tanpa delay).
-- Begitu ada gerakan apapun dari user — scroll, sentuh layar, atau klik sekali saja (termasuk yang tidak disengaja saat scroll pertama) — otomatis unmute dan lagu langsung terdengar tanpa perlu tap khusus ke tombol apapun.
+Catatan penting soal sound: iOS Safari & kebanyakan browser HP punya kebijakan sistem yang MELARANG audio berbunyi otomatis sebelum ada interaksi apapun dari user (ini bukan bug kode, tapi aturan dari Apple/Google demi baterai & UX — tidak bisa di-bypass 100% lewat kode apapun, di semua website manapun). Yang website ini lakukan untuk meminimalisir itu:
+- Saat halaman dibuka, script langsung coba `play()` lagu tanpa mute sama sekali. Di banyak browser (termasuk Chrome desktop/Android dengan riwayat kunjungan, atau browser yang mengizinkan autoplay), lagu akan langsung bunyi tanpa perlu apapun.
+- Kalau percobaan itu diblokir, fallback ke autoplay muted (biar tetap "jalan" dari awal), lalu dengar-dengaran ke HAMPIR SEMUA jenis interaksi sekecil apapun (gerak mouse, scroll, sentuh, keydown, dsb) untuk langsung unmute — jadi begitu ada gerakan sekecil apapun di layar, lagu langsung terdengar tanpa perlu tap ke tombol khusus manapun.
 
-Jadi secara teknis nggak ada tombol "tap to play", tapi kalau user belum menyentuh layar sama sekali (benar-benar diam), sound memang belum akan bunyi — ini batas dari sistem browser, bukan dari website-nya.
+Kalau tetap tidak bunyi sama sekali di suatu HP, itu murni pembatasan OS/browser di perangkat tersebut, bukan sesuatu yang bisa diperbaiki dari sisi kode website.
 
 Tidak ada dependency, tidak perlu `npm install`, tidak perlu `vercel.json`.
