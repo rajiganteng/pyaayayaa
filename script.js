@@ -24,20 +24,32 @@ const TEXTS = [
 ];
 
 const bgSong = document.getElementById("bg-song");
+let unmuteAttempted = false;
 
 function tryPlaySong() {
   const attempt = bgSong.play();
   if (attempt !== undefined) {
+    attempt.catch(() => {});
+  }
+}
+
+function tryUnmute() {
+  if (unmuteAttempted) return;
+  unmuteAttempted = true;
+  bgSong.muted = false;
+  const attempt = bgSong.play();
+  if (attempt !== undefined) {
     attempt.catch(() => {
-      bgSong.muted = true;
-      bgSong.play().then(() => {
-        bgSong.muted = false;
-      }).catch(() => {});
+      unmuteAttempted = false;
     });
   }
 }
 
 tryPlaySong();
+
+["click", "touchstart", "touchmove", "scroll", "keydown"].forEach((evt) => {
+  window.addEventListener(evt, tryUnmute, { passive: true, once: false });
+});
 
 window.addEventListener("load", () => {
   const bar = document.getElementById("loadingBar");
@@ -49,6 +61,7 @@ window.addEventListener("load", () => {
     document.getElementById("loading-screen").classList.add("hidden");
     startScene();
     tryPlaySong();
+    tryUnmute();
   }, 2600);
 });
 
@@ -57,18 +70,24 @@ function buildFloatingPhotos() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
+  const laneCount = PHOTOS.length;
+  const laneWidth = vw / laneCount;
+
   PHOTOS.forEach((src, i) => {
     const el = document.createElement("div");
     el.className = "float-photo";
 
-    const size = 70 + Math.random() * 55;
+    const maxSize = Math.min(laneWidth - 14, 110);
+    const size = Math.max(50, maxSize - Math.random() * 20);
     el.style.width = size + "px";
     el.style.height = size + "px";
 
-    const startX = Math.random() * (vw - size);
+    const laneStart = i * laneWidth;
+    const jitter = Math.max(0, laneWidth - size - 6);
+    const startX = laneStart + Math.random() * jitter + 3;
     el.style.left = startX + "px";
 
-    const duration = 16 + Math.random() * 12;
+    const duration = 20 + Math.random() * 10;
     const delay = -Math.random() * duration;
 
     el.style.top = -size + "px";
